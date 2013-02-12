@@ -11,22 +11,24 @@ GOPLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux
 eval "$(go env)"
 
 function cgo-enabled {
-	if [ "$1" = "${GOHOSTOS}" ]; then
-		if [ "${GOHOSTOS}" != "freebsd/arm" ]; then
-			echo 1
-		else
-			# cgo is not freebsd/arm
-			echo 0	
-		fi
-	else 
+	if [[ $1 == ${GOHOSTOS} && ${GOHOSTOS} != "freebsd/arm" ]]; then
+		echo 1
+    else
 		echo 0
 	fi
+}
+
+function go-platform-available {
+    GOOS=$1
+    GOARCH=$2
+    [[ -d ${GOROOT}/pkg/${GOOS}_${GOARCH} ]]
 }
 
 function go-alias {
 	GOOS=${1%/*}
 	GOARCH=${1#*/}
-	eval "function go-${GOOS}-${GOARCH} { (CGO_ENABLED=$(cgo-enabled ${GOOS} ${GOARCH}) GOOS=${GOOS} GOARCH=${GOARCH} go \$@ ) }"
+    go-platform-available $GOOS $GOARCH && \
+        eval "function go-${GOOS}-${GOARCH} { (CGO_ENABLED=$(cgo-enabled ${GOOS} ${GOARCH}) GOOS=${GOOS} GOARCH=${GOARCH} go \$@ ) }"
 }
 
 function go-crosscompile-build {
@@ -37,7 +39,7 @@ function go-crosscompile-build {
 
 function go-crosscompile-build-all {
 	for GOPLATFORM in $GOPLATFORMS; do
-		CMD="go-crosscompile-build ${GOPLATFORM}"
+		CMD="go-crosscompile-build ${PLATFORM}"
 		echo "$CMD"
 		$CMD >/dev/null
 	done
@@ -45,11 +47,13 @@ function go-crosscompile-build-all {
 
 function go-all {
 	for GOPLATFORM in $GOPLATFORMS; do
-		GOOS=${GOPLATFORM%/*}
-		GOARCH=${GOPLATFORM#*/}
-		CMD="go-${GOOS}-${GOARCH} $@"
-		echo "$CMD"
-		$CMD
+        GOOS=${PLATFORM%/*}
+        GOARCH=${PLATFORM#*/}
+        if go-platform-available $GOOS $GOARCH; then
+            CMD="go-${GOOS}-${GOARCH} $@"
+            echo "$CMD"
+            $CMD
+        fi
 	done
 }
 
