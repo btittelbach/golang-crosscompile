@@ -6,7 +6,7 @@
 
 # support functions for go cross compilation
 
-PLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64)
+GOPLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64)
 
 eval "$(go env)"
 
@@ -36,25 +36,26 @@ function go-crosscompile-build {
 }
 
 function go-crosscompile-build-all {
-	for PLATFORM in $PLATFORMS; do
-		CMD="go-crosscompile-build ${PLATFORM}"
+	for GOPLATFORM in $GOPLATFORMS; do
+		CMD="go-crosscompile-build ${GOPLATFORM}"
 		echo "$CMD"
 		$CMD >/dev/null
 	done
 }	
 
 function go-all {
-	for PLATFORM in $PLATFORMS; do
-		GOOS=${PLATFORM%/*}
-		GOARCH=${PLATFORM#*/}
+	for GOPLATFORM in $GOPLATFORMS; do
+		GOOS=${GOPLATFORM%/*}
+		GOARCH=${GOPLATFORM#*/}
 		CMD="go-${GOOS}-${GOARCH} $@"
 		echo "$CMD"
 		$CMD
 	done
 }
 
-for PLATFORM in $PLATFORMS; do
-	go-alias $PLATFORM
+for GOPLATFORM in $GOPLATFORMS; do
+	go-alias $GOPLATFORM
 done
 
+unset GOPLATFORM
 unset -f go-alias
