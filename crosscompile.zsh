@@ -61,10 +61,17 @@ function go-all {
 	fi
 }
 
+#can be called without arguments:
+## go-build-all
+#can be used with go build arguments like this:
+## go-build-all -ldflags "-s" .
+#or:
+## go-build-all -ldflags "-s" main.go
 function go-build-all {
 	local GOFAILURES=""
 	local GOOS GOARCH GOPLATFORM
-	local OUTPUT="${${*:r}:-${PWD:t}}"
+    local LASTARG=${@[-1]}
+	local OUTPUT="${${LASTARG:r}:-${PWD:t}}"
 	for GOPLATFORM in $GOPLATFORMS; do
 		GOOS=${GOPLATFORM%/*}
 		GOARCH=${GOPLATFORM#*/}
