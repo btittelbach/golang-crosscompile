@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Copyright 2013 Bernhard Tittelbach. All rights reserved.
-# based on crosscompile.bash by davecheney
+# based on crosscompile.bash by davecheney and the Go Authors.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -10,51 +10,74 @@ GOPLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux
 
 eval "$(go env)"
 
-function cgo-enabled {
-	if [[ $1 == ${GOHOSTOS} && ${GOHOSTOS} != "freebsd/arm" ]]; then
-		echo 1
-    else
-		echo 0
-	fi
-}
-
 function go-platform-available {
-    GOOS=$1
-    GOARCH=$2
+    local GOOS=$1
+    local GOARCH=$2
     [[ -d ${GOROOT}/pkg/${GOOS}_${GOARCH} ]]
 }
 
 function go-alias {
-	GOOS=${1%/*}
-	GOARCH=${1#*/}
+	local GOOS=${1%/*}
+	local GOARCH=${1#*/}
     go-platform-available $GOOS $GOARCH && \
-        eval "function go-${GOOS}-${GOARCH} { (CGO_ENABLED=$(cgo-enabled ${GOOS} ${GOARCH}) GOOS=${GOOS} GOARCH=${GOARCH} go \$@ ) }"
+        eval "function go-${GOOS}-${GOARCH} { ( GOOS=${GOOS} GOARCH=${GOARCH} go \$@ ) }"
 }
 
 function go-crosscompile-build {
 	GOOS=${1%/*}
 	GOARCH=${1#*/}
-	cd ${GOROOT}/src ; CGO_ENABLED=$(cgo-enabled ${GOOS} ${GOARCH}) GOOS=${GOOS} GOARCH=${GOARCH} ./make.bash --no-clean 2>&1
+	cd ${GOROOT}/src ; GOOS=${GOOS} GOARCH=${GOARCH} ./make.bash --no-clean 2>&1
 }
 
 function go-crosscompile-build-all {
+	local GOFAILURES=""
+	local GOOS GOARCH CMD GOPLATFORM
 	for GOPLATFORM in $GOPLATFORMS; do
 		CMD="go-crosscompile-build ${PLATFORM}"
 		echo "$CMD"
-		$CMD >/dev/null
+		eval $CMD || GOFAILURES="$GOFAILURES $GOPLATFORM"
 	done
-}	
+	if [[ -n $GOFAILURES ]]; then
+	    echo "*** go-crosscompile-build-all FAILED on $GOFAILURES ***"
+	    return 1
+	fi
+}
 
 function go-all {
+	local GOFAILURES=""
+	local GOOS GOARCH CMD GOPLATFORM
 	for GOPLATFORM in $GOPLATFORMS; do
-        GOOS=${PLATFORM%/*}
-        GOARCH=${PLATFORM#*/}
+        GOOS=${GOPLATFORM%/*}
+        GOARCH=${GOPLATFORM#*/}
         if go-platform-available $GOOS $GOARCH; then
             CMD="go-${GOOS}-${GOARCH} $@"
             echo "$CMD"
-            $CMD
+			eval $CMD || GOFAILURES="$GOFAILURES $GOPLATFORM"
         fi
 	done
+	if [[ -n $GOFAILURES ]]; then
+	    echo "*** go-all FAILED on $GOFAILURES ***"
+	    return 1
+	fi
+}
+
+function go-build-all {
+	local GOFAILURES=""
+	local GOOS GOARCH GOPLATFORM
+	local OUTPUT="${${*:r}:-${PWD:t}}"
+	for GOPLATFORM in $GOPLATFORMS; do
+		GOOS=${GOPLATFORM%/*}
+		GOARCH=${GOPLATFORM#*/}
+		if go-platform-available $GOOS $GOARCH; then
+			CMD="go-${GOOS}-${GOARCH} build -o "${OUTPUT}-${GOOS}-${GOARCH}" $@"
+			echo "$CMD"
+			eval $CMD || GOFAILURES="$GOFAILURES $GOPLATFORM"
+		fi
+	done
+	if [[ -n $GOFAILURES ]]; then
+	    echo "*** go-build-all FAILED on $GOFAILURES ***"
+	    return 1
+	fi
 }
 
 for GOPLATFORM in $GOPLATFORMS; do
