@@ -7,8 +7,7 @@
 # support functions for go cross compilation
 
 GOPLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64)
-
-eval "$(go env)"
+GOROOT=$(go env GOROOT)
 
 function go-platform-available {
     local GOOS=$1
