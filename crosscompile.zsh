@@ -10,9 +10,11 @@ GOPLATFORMS=(darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux
 GOROOT=$(go env GOROOT)
 
 function go-platform-available {
-    local GOOS=$1
-    local GOARCH=$2
-    [[ -d ${GOROOT}/pkg/${GOOS}_${GOARCH} ]]
+    if go version | grep -e " go1.[1234]"; then
+      local GOOS=$1
+      local GOARCH=$2
+      [[ -d ${GOROOT}/pkg/${GOOS}_${GOARCH} ]]
+    fi
 }
 
 function go-alias {
